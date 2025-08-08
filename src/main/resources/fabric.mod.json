@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "id": "mcomputers",
+  "version": "${version}",
+  "name": "Minecraft Computers",
+  "description": "This is an example description! Tell everyone what your mod is about!",
+  "authors": [
+    "Me!"
+  ],
+  "contact": {
+    "homepage": "https://fabricmc.net/",
+    "sources": "https://github.com/FabricMC/fabric-example-mod"
+  },
+  "license": "Public Domain",
+  "icon": "assets/mcomputers/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      {
+        "value": "mentine.mcomputers.MinecraftComputers",
+        "adapter": "kotlin"
+      }
+    ],
+    "fabric-datagen": [
+      {
+        "value": "mentine.mcomputers.MinecraftComputersDataGenerator",
+        "adapter": "kotlin"
+      }
+    ]
+  },
+  "mixins": [
+    "mcomputers.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.14",
+    "minecraft": "~1.20.1",
+    "java": ">=17",
+    "fabric-api": "*",
+    "fabric-language-kotlin": "*"
+  },
+  "suggests": {
+    "another-mod": "*"
+  }
+}
