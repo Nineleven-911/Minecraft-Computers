@@ -3,19 +3,40 @@ package mentine.mcomputers.mod.gui
 import mentine.mcomputers.MinecraftComputers.MOD_ID
 import net.fabricmc.api.EnvType
 import net.fabricmc.api.Environment
+import net.minecraft.client.MinecraftClient
+import net.minecraft.client.font.Font
 import net.minecraft.client.font.FontStorage
 import net.minecraft.client.font.TextRenderer
+import net.minecraft.client.font.TrueTypeFontLoader
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.Screen
-import net.minecraft.client.texture.TextureManager
-import net.minecraft.resource.ResourceManager
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
+import java.io.IOException
+
 
 @Environment(EnvType.CLIENT)
 class ComputerBash() : Screen(Text.of("Mentine OS")) {
 
     companion object {
+        private fun getMCFont(): TextRenderer {
+            val mc: MinecraftClient = MinecraftClient.getInstance()
+            val list: MutableList<Font> = mutableListOf()
+            val loader = TrueTypeFontLoader(
+                Identifier("mcomputers:mc.ttf"),
+                16f,
+                20f,
+                TrueTypeFontLoader.Shift.NONE,
+                ""
+            )
+            val loadable = loader.build().orThrow()
+            val font: Font = loadable.load(mc.resourceManager)
+            list.add(font)
+            val storage = FontStorage(mc.textureManager, Identifier("mcomputers:mcfont"))
+            storage.setFonts(list)
+            return TextRenderer({ storage }, true)
+        }
+        val renderer = getMCFont()
         val computerShell = Identifier.of(MOD_ID, "textures/gui/computer_bash.png")!!
         const val SHELL_WIDTH = 351
         const val SHELL_HEIGHT = 249
@@ -54,7 +75,7 @@ class ComputerBash() : Screen(Text.of("Mentine OS")) {
         )
         // 绘制 String
         context.drawText(
-            textRenderer,
+            renderer,
             "Hello, World!",
             x + 19, y + 18, 0xFFFFFF, false
         )
