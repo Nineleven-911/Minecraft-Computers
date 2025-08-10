@@ -3,8 +3,12 @@ package mentine.mcomputers.mod.gui
 import mentine.mcomputers.MinecraftComputers.MOD_ID
 import net.fabricmc.api.EnvType
 import net.fabricmc.api.Environment
+import net.minecraft.client.font.FontStorage
+import net.minecraft.client.font.TextRenderer
 import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.Screen
+import net.minecraft.client.texture.TextureManager
+import net.minecraft.resource.ResourceManager
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
 
