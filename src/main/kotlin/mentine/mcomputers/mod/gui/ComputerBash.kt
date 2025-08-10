@@ -12,16 +12,16 @@ import net.minecraft.client.gui.DrawContext
 import net.minecraft.client.gui.screen.Screen
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
-import java.io.IOException
+import org.lwjgl.glfw.GLFW
+import kotlin.math.min
 
 
 @Environment(EnvType.CLIENT)
-class ComputerBash() : Screen(Text.of("Mentine OS")) {
+class ComputerBash : Screen(Text.of("Mentine OS")) {
 
     companion object {
-        private fun getMCFont(): TextRenderer {
+        private fun getMCFont(): Font {
             val mc: MinecraftClient = MinecraftClient.getInstance()
-            val list: MutableList<Font> = mutableListOf()
             val loader = TrueTypeFontLoader(
                 Identifier("mcomputers:mc.ttf"),
                 16f,
@@ -31,41 +31,69 @@ class ComputerBash() : Screen(Text.of("Mentine OS")) {
             )
             val loadable = loader.build().orThrow()
             val font: Font = loadable.load(mc.resourceManager)
-            list.add(font)
-            val storage = FontStorage(mc.textureManager, Identifier("mcomputers:mcfont"))
+            return font
+        }
+
+        private fun getMCTextRenderer(): TextRenderer {
+            val list: MutableList<Font> = mutableListOf()
+            list.add(getMCFont())
+            val storage = FontStorage(MinecraftClient.getInstance().textureManager, Identifier("mcomputers:mcfont"))
             storage.setFonts(list)
             return TextRenderer({ storage }, true)
         }
-        val renderer = getMCFont()
+        val renderer = getMCTextRenderer()
         val computerShell = Identifier.of(MOD_ID, "textures/gui/computer_bash.png")!!
+        const val WHITE = 0xffffff or (255 shl 24)
+        const val GRAY = 0x808080 or ((255 * 0.4).toInt() shl 24)
         const val SHELL_WIDTH = 351
         const val SHELL_HEIGHT = 249
     }
 
-    private var cursor = 0
+    private var cursorRow = 0
+    private var cursorCol = 0
     private val texts: MutableList<String> = mutableListOf()
+    private var current : StringBuilder = StringBuilder()
 
     override fun shouldPause() = false
 
     override fun init() {
         super.init()
+        texts.add(0, "")
     }
 
     override fun charTyped(chr: Char, modifiers: Int): Boolean {
+        current.append(chr)
+        cursorRow++
         return super.charTyped(chr, modifiers)
     }
 
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        if (keyCode == GLFW.GLFW_KEY_ENTER) {
+            handleEnter()
+        } else if (keyCode == GLFW.GLFW_KEY_BACKSPACE) {
+            handleBackSpace()
+        }
         return super.keyPressed(keyCode, scanCode, modifiers)
+    }
+
+    private fun handleBackSpace() {
+        if (cursorRow > 0 && current.isNotEmpty()) {
+            current.deleteCharAt(current.lastIndex)
+            cursorRow--
+        }
+    }
+
+    private fun handleEnter() {
+        texts.add("")
+        cursorCol++
+        current = StringBuilder()
     }
 
     override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
         // Set vals
         val (x, y) = (width - SHELL_WIDTH) / 2 to (height - SHELL_HEIGHT) / 2
         // 绘制灰色半透明覆盖层
-        val alpha = (255 * 0.4).toInt() // 40% 透明度
-        val grayColor = 0x808080 or (alpha shl 24) // 灰色加上alpha通道
-        context.fill(0, 0, width, height, grayColor)
+        context.fill(0, 0, width, height, GRAY)
         // 绘制界面
         context.drawTexture(
             computerShell,
@@ -73,12 +101,24 @@ class ComputerBash() : Screen(Text.of("Mentine OS")) {
             SHELL_WIDTH, SHELL_HEIGHT,
             SHELL_WIDTH, SHELL_HEIGHT
         )
+
+        texts[cursorCol] = current.toString()   // TODO: Render不应该处理逻辑
+
         // 绘制 String
-        context.drawText(
-            renderer,
-            "Hello, World!",
-            x + 19, y + 18, 0xFFFFFF, false
-        )
+        for (i in 0 until  texts.size) {
+            val line = texts[i]
+            context.drawText(
+                renderer,
+                line,
+                x + 19, y + 18 + (i * 10), 0xFFFFFF, false
+            )
+        }
+
+        if ((System.currentTimeMillis() / 1000) % 2 == 0L){
+            val cursorX = x + 19 + getMCTextRenderer().getWidth(texts[cursorCol])
+            val cursorY = y + 19 + (cursorCol * 10)
+            context.fill(cursorX, cursorY, cursorX + 1, cursorY + 10, WHITE)
+        }
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, amount: Double): Boolean {
