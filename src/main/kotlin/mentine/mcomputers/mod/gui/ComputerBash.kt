@@ -13,6 +13,7 @@ import net.minecraft.client.gui.screen.Screen
 import net.minecraft.text.Text
 import net.minecraft.util.Identifier
 import org.lwjgl.glfw.GLFW
+import kotlin.math.max
 import kotlin.math.min
 
 
@@ -20,6 +21,7 @@ import kotlin.math.min
 class ComputerBash : Screen(Text.of("Mentine OS")) {
 
     companion object {
+        val debug = true
         private fun getMCFont(): Font {
             val mc: MinecraftClient = MinecraftClient.getInstance()
             val loader = TrueTypeFontLoader(
@@ -30,8 +32,7 @@ class ComputerBash : Screen(Text.of("Mentine OS")) {
                 ""
             )
             val loadable = loader.build().orThrow()
-            val font: Font = loadable.load(mc.resourceManager)
-            return font
+            return loadable.load(mc.resourceManager)
         }
 
         private fun getMCTextRenderer(): TextRenderer {
@@ -52,48 +53,83 @@ class ComputerBash : Screen(Text.of("Mentine OS")) {
     private var cursorRow = 0
     private var cursorCol = 0
     private val texts: MutableList<String> = mutableListOf()
-    private var current : StringBuilder = StringBuilder()
+    private var current: StringBuilder = StringBuilder()
 
     override fun shouldPause() = false
 
     override fun init() {
         super.init()
-        texts.add(0, "")
+        texts.add("")  // Initialize with an empty line.
     }
 
     override fun charTyped(chr: Char, modifiers: Int): Boolean {
-        current.append(chr)
-        cursorRow++
+        if (cursorRow >= texts.size) {
+            texts.add("")
+        }
+        current.insert(cursorCol, chr)
+        cursorCol++
+
+        texts[cursorRow] = current.toString()  // Update the current row's text
         return super.charTyped(chr, modifiers)
     }
 
     override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
-        if (keyCode == GLFW.GLFW_KEY_ENTER) {
-            handleEnter()
-        } else if (keyCode == GLFW.GLFW_KEY_BACKSPACE) {
-            handleBackSpace()
+        when (keyCode) {
+            GLFW.GLFW_KEY_ENTER -> handleEnter()
+            GLFW.GLFW_KEY_BACKSPACE -> handleBackSpace()
+            GLFW.GLFW_KEY_LEFT, GLFW.GLFW_KEY_RIGHT -> handleMove(keyCode)
         }
         return super.keyPressed(keyCode, scanCode, modifiers)
     }
 
-    private fun handleBackSpace() {
-        if (cursorRow > 0 && current.isNotEmpty()) {
-            current.deleteCharAt(current.lastIndex)
-            cursorRow--
+    private fun handleMove(keyCode: Int) {
+        when (keyCode) {
+            GLFW.GLFW_KEY_LEFT -> {
+                if (cursorCol > 0) cursorCol--
+            }
+            GLFW.GLFW_KEY_RIGHT -> {
+                if (cursorCol < current.length) cursorCol++
+            }
         }
     }
 
+    private fun handleBackSpace() {
+        if (cursorCol > 0) {
+            current.deleteCharAt(cursorCol - 1)
+            cursorCol--
+        } else if (cursorRow > 0) {
+            val previousLine = texts[cursorRow - 1]
+            cursorCol = previousLine.length
+            texts[cursorRow - 1] = previousLine + texts[cursorRow]
+            current = StringBuilder(texts[cursorRow - 1])
+            texts.removeAt(cursorRow)
+            cursorRow--
+        }
+        texts[cursorRow] = current.toString()  // Update the current row after backspace
+    }
+
     private fun handleEnter() {
-        texts.add("")
-        cursorCol++
-        current = StringBuilder()
+        texts.add("")  // Add a new line when pressing Enter
+        cursorRow++
+        cursorCol = 0
+        current = StringBuilder()  // Reset current text for the new line
     }
 
     override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+        if (debug) {
+            context.drawText(renderer, "Mouse X: $mouseX", 0, 10, WHITE, false)
+            context.drawText(renderer, "Mouse Y: $mouseY", 0, 20, WHITE, false)
+            context.drawText(renderer, "Delta: $delta", 0, 30, WHITE, false)
+            context.drawText(renderer, "row: $cursorRow", 0, 40, WHITE, false)
+            context.drawText(renderer, "col: $cursorCol", 0, 50, WHITE, false)
+        }
+
         // Set vals
         val (x, y) = (width - SHELL_WIDTH) / 2 to (height - SHELL_HEIGHT) / 2
+
         // 绘制灰色半透明覆盖层
         context.fill(0, 0, width, height, GRAY)
+
         // 绘制界面
         context.drawTexture(
             computerShell,
@@ -102,10 +138,8 @@ class ComputerBash : Screen(Text.of("Mentine OS")) {
             SHELL_WIDTH, SHELL_HEIGHT
         )
 
-        texts[cursorCol] = current.toString()   // TODO: Render不应该处理逻辑
-
         // 绘制 String
-        for (i in 0 until  texts.size) {
+        for (i in 0 until texts.size) {
             val line = texts[i]
             context.drawText(
                 renderer,
@@ -114,9 +148,10 @@ class ComputerBash : Screen(Text.of("Mentine OS")) {
             )
         }
 
-        if ((System.currentTimeMillis() / 1000) % 2 == 0L){
-            val cursorX = x + 19 + getMCTextRenderer().getWidth(texts[cursorCol])
-            val cursorY = y + 19 + (cursorCol * 10)
+        // Draw the cursor
+        if ((System.currentTimeMillis() / 500) % 2 == 0L) {
+            val cursorX = x + 19 + getMCTextRenderer().getWidth(current.toString().take(cursorCol))
+            val cursorY = y + 19 + (cursorRow * 10)
             context.fill(cursorX, cursorY, cursorX + 1, cursorY + 10, WHITE)
         }
     }
